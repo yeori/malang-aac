@@ -1,0 +1,6 @@
+{
+  "name": "Bridge AAC",
+  "description": "A minimalist, child-friendly AAC communication board with sentence building and layout customization.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
