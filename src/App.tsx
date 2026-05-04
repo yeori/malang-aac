@@ -33,6 +33,12 @@ interface Category {
   color: string;
 }
 
+interface Board {
+  id: string;
+  name: string;
+  description: string;
+}
+
 // --- Constants & Data ---
 const CATEGORIES: Category[] = [
   { id: 'all', name: '전체', icon: <Home className="w-5 h-5" />, color: 'bg-gray-100' },
@@ -65,6 +71,14 @@ const INITIAL_SYMBOLS: SymbolItem[] = [
   { id: 'o4', label: '책', category: 'objects', color: '', icon: <Type /> },
 ];
 
+const INITIAL_BOARDS: Board[] = [
+  { id: 'b1', name: '일상 대화', description: '기본적인 대화를 나눌 수 있는 의사소통판' },
+  { id: 'b2', name: '학교 생활', description: '학교에서 선생님, 친구들과 대화' },
+  { id: 'b3', name: '식당에서', description: '음식을 주문하거나 식사할 때' },
+  { id: 'b4', name: '나의 감정', description: '내 기분과 감정을 표현할 때' },
+  { id: 'b5', name: '놀이터', description: '친구들과 놀이터에서 놀 때' },
+];
+
 type ColumnMode = '2' | '3' | '4' | '5' | '6' | 'auto';
 
 const COLUMN_OPTIONS: { value: ColumnMode; label: string }[] = [
@@ -84,6 +98,11 @@ export default function App() {
   const [sentence, setSentence] = useState<SymbolItem[]>([]);
   const [activeCategory, setActiveCategory] = useState('all');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [boards, setBoards] = useState<Board[]>(INITIAL_BOARDS);
+  const [activeBoardId, setActiveBoardId] = useState('b1');
+  const [isAddBoardModalOpen, setIsAddBoardModalOpen] = useState(false);
+  const [newBoardName, setNewBoardName] = useState('');
+  const [newBoardDescription, setNewBoardDescription] = useState('');
 
   // --- Logic ---
   const filteredSymbols = useMemo(() => {
@@ -112,6 +131,21 @@ export default function App() {
   const readSentence = () => {
     const text = sentence.map(s => s.label).join(' ');
     speak(text);
+  };
+
+  const handleAddBoard = () => {
+    if (!newBoardName.trim()) return;
+    const newBoard: Board = {
+      id: `b${Date.now()}`,
+      name: newBoardName.trim(),
+      description: newBoardDescription.trim(),
+    };
+    setBoards(prev => [...prev, newBoard]);
+    setIsAddBoardModalOpen(false);
+    setNewBoardName('');
+    setNewBoardDescription('');
+    setActiveBoardId(newBoard.id);
+    setIsMenuOpen(false);
   };
 
   const getGridColsClass = () => {
@@ -191,7 +225,17 @@ export default function App() {
                 >
                   <Menu className="w-6 h-6 text-gray-700" />
                 </button>
-                <h1 className="text-xl font-bold text-gray-800 tracking-tight">Bridge AAC</h1>
+                <h1 className="text-xl font-bold text-gray-800 tracking-tight flex items-center gap-2">
+                  <span>말랑말랑 AAC</span>
+                  {boards.find(b => b.id === activeBoardId) && (
+                    <>
+                      <ChevronRight className="w-4 h-4 text-gray-400 hidden sm:block" />
+                      <span className="text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md text-sm font-medium hidden sm:block">
+                        {boards.find(b => b.id === activeBoardId)?.name}
+                      </span>
+                    </>
+                  )}
+                </h1>
               </div>
 
               <div className="flex items-center gap-2 relative">
@@ -354,23 +398,108 @@ export default function App() {
               </div>
 
               <div className="space-y-3 flex-1 overflow-y-auto">
-                {['일상 대화', '학교 생활', '식당에서', '나의 감정', '놀이터'].map((board) => (
+                {boards.map((board) => (
                   <button 
-                    key={board}
-                    className={`w-full flex items-center gap-3 p-4 rounded-2xl text-left transition-all ${board === '일상 대화' ? 'bg-blue-50 text-blue-700 font-bold' : 'hover:bg-gray-50 text-gray-600'}`}
-                    onClick={() => setIsMenuOpen(false)}
+                    key={board.id}
+                    className={`w-full flex flex-col gap-1 p-4 rounded-2xl text-left transition-all ${activeBoardId === board.id ? 'bg-blue-50 text-blue-700 font-bold' : 'hover:bg-gray-50 text-gray-600'}`}
+                    onClick={() => {
+                      setActiveBoardId(board.id);
+                      setIsMenuOpen(false);
+                    }}
                   >
-                    <LayoutGrid className="w-5 h-5 opacity-50" />
-                    {board}
+                    <div className="flex items-center gap-3">
+                      <LayoutGrid className="w-5 h-5 opacity-50 shrink-0" />
+                      <span className="truncate">{board.name}</span>
+                    </div>
+                    {board.description && (
+                      <span className={`text-xs pl-8 truncate ${activeBoardId === board.id ? 'text-blue-500/80 font-normal' : 'text-gray-400'}`}>
+                        {board.description}
+                      </span>
+                    )}
                   </button>
                 ))}
+                
+                {/* 상황 추가 버튼 */}
+                <button
+                  onClick={() => setIsAddBoardModalOpen(true)}
+                  className="w-full flex items-center justify-center gap-2 p-4 mt-2 rounded-2xl border-2 border-dashed border-gray-200 text-gray-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-all font-medium"
+                >
+                  <Plus className="w-5 h-5" />
+                  새로운 상황 추가
+                </button>
               </div>
 
               <div className="mt-auto pt-6 border-t border-gray-100 text-xs text-gray-400 text-center">
-                Bridge AAC v1.0
+                말랑말랑 AAC v1.0
               </div>
             </motion.div>
           </>
+        )}
+      </AnimatePresence>
+
+      {/* --- Add Board Modal --- */}
+      <AnimatePresence>
+        {isAddBoardModalOpen && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }} 
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+              onClick={() => setIsAddBoardModalOpen(false)}
+            />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-3xl shadow-xl w-full max-w-sm relative z-10 p-6 sm:p-8"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold text-gray-800 tracking-tight">새로운 상황 추가</h3>
+                <button 
+                  onClick={() => setIsAddBoardModalOpen(false)} 
+                  className="p-2 -mr-2 bg-gray-50 hover:bg-gray-100 text-gray-500 rounded-full transition-colors"
+                >
+                  <X className="w-5 h-5"/>
+                </button>
+              </div>
+              
+              <div className="space-y-5">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">상황 이름 <span className="text-red-500">*</span></label>
+                  <input 
+                    type="text" 
+                    value={newBoardName}
+                    onChange={e => setNewBoardName(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-gray-800"
+                    placeholder="예: 놀이공원"
+                    autoFocus
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">설명 <span className="text-gray-400 font-normal">(선택)</span></label>
+                  <textarea 
+                    value={newBoardDescription}
+                    onChange={e => setNewBoardDescription(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-gray-800 resize-none"
+                    placeholder="예: 놀이공원 매표소에서"
+                    rows={3}
+                  />
+                </div>
+                
+                <div className="pt-2">
+                  <button 
+                    onClick={handleAddBoard}
+                    disabled={!newBoardName.trim()}
+                    className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white font-bold py-3 px-4 rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:hover:bg-blue-600 active:scale-95 transition-all shadow-md"
+                  >
+                    <Plus className="w-5 h-5" />
+                    만들기
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
 
